@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Training datasets
+backend/data/
+
+# YOLO generated results
+backend/runs/
+
+# Trained models
+backend/saved_models/
+*.pt
+*.pth
+*.keras
+*.h5
+*.onnx
+
+# Flask uploads
+backend/uploads/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# =========================================================
+# DATASETS
+# =========================================================
+
+# All backend datasets
+backend/data/
+
+# All ML datasets
+ml/data/
+
+# Generated YOLO runs
+backend/runs/
+
+# Trained model files
+*.pt
+*.pth
+*.keras
+*.h5
+*.onnx
+
+# Python virtual environment
+.venv/
+venv/
+
+# Node dependencies
+node_modules/
+frontend/node_modules/
