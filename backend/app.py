@@ -7,8 +7,6 @@ import numpy as np
 import time
 import uuid
 
-import tensorflow as tf
-from ultralytics import YOLO
 
 
 # ============================================================
@@ -72,6 +70,8 @@ def get_vgg19_model():
 
     if vgg19_model is None:
 
+        import tensorflow as tf
+
         print()
         print("Loading VGG19...")
         print(f"Model path: {VGG19_PATH}")
@@ -90,6 +90,8 @@ def get_yolo_model():
     global yolo_model
 
     if yolo_model is None:
+
+        from ultralytics import YOLO
 
         print()
         print("Loading YOLOv8...")
@@ -126,6 +128,8 @@ def health():
 # ============================================================
 
 def predict_vgg19(image):
+
+    import tensorflow as tf
 
     image = image.convert(
         "RGB"
