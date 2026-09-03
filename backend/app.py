@@ -55,44 +55,53 @@ UPLOAD_DIR.mkdir(
 
 
 # ============================================================
-# LOAD MODELS
+# LAZY MODEL LOADING
 # ============================================================
 
-print()
-print("=" * 60)
-print("ROADGUARD-AI")
-print("Loading AI models...")
-print("=" * 60)
+# Models are intentionally NOT loaded when the Flask application starts.
+# This allows Gunicorn/Render to open the HTTP port quickly.
+# The models are loaded only when /api/scan actually needs them.
+
+vgg19_model = None
+yolo_model = None
 
 
-print(
-    f"Loading VGG19:\n{VGG19_PATH}"
-)
+def get_vgg19_model():
 
-vgg19_model = tf.keras.models.load_model(
-    VGG19_PATH
-)
+    global vgg19_model
 
-print(
-    "VGG19 loaded successfully."
-)
+    if vgg19_model is None:
+
+        print()
+        print("Loading VGG19...")
+        print(f"Model path: {VGG19_PATH}")
+
+        vgg19_model = tf.keras.models.load_model(
+            VGG19_PATH
+        )
+
+        print("VGG19 loaded successfully.")
+
+    return vgg19_model
 
 
-print(
-    f"\nLoading YOLOv8:\n{YOLO_PATH}"
-)
+def get_yolo_model():
 
-yolo_model = YOLO(
-    str(YOLO_PATH)
-)
+    global yolo_model
 
-print(
-    "YOLOv8 loaded successfully."
-)
+    if yolo_model is None:
 
-print()
-print("All models loaded.")
-print("=" * 60)
+        print()
+        print("Loading YOLOv8...")
+        print(f"Model path: {YOLO_PATH}")
+
+        yolo_model = YOLO(
+            str(YOLO_PATH)
+        )
+
+        print("YOLOv8 loaded successfully.")
+
+    return yolo_model
 
 
 # ============================================================
@@ -107,8 +116,8 @@ def health():
 
     return jsonify({
         "status": "ok",
-        "vgg19": True,
-        "yolov8": True
+        "vgg19": vgg19_model is not None,
+        "yolov8": yolo_model is not None
     })
 
 
@@ -141,7 +150,9 @@ def predict_vgg19(image):
         image_array
     )
 
-    prediction = vgg19_model.predict(
+    model = get_vgg19_model()
+
+    prediction = model.predict(
         image_array,
         verbose=0
     )
@@ -180,7 +191,9 @@ def predict_yolov8(
     image_path
 ):
 
-    results = yolo_model.predict(
+    model = get_yolo_model()
+
+    results = model.predict(
         source=str(image_path),
         conf=0.50,
         iou=0.50,
