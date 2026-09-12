@@ -4,7 +4,7 @@
 // Connects React frontend to Flask AI backend
 // ============================================================
 
-const API_BASE_URL = "http://127.0.0.1:5000";
+const API_BASE_URL = "https://roadguard-ai-54av.onrender.com";
 
 
 // ============================================================
