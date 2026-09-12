@@ -15,7 +15,7 @@ import uuid
 
 app = Flask(__name__)
 
-CORS(app)
+CORS(app, origins=["https://roadguard-ai-three.vercel.app"])
 
 BASE_DIR = Path(__file__).resolve().parent
 
