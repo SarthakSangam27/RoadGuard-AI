@@ -4,7 +4,25 @@
 // Connects React frontend to Flask AI backend
 // ============================================================
 
-const API_BASE_URL = "https://roadguard-ai-54av.onrender.com";
+
+// ============================================================
+// API CONFIGURATION
+// ============================================================
+
+// Vite environment variable.
+//
+// LOCAL:
+// VITE_API_BASE_URL=http://127.0.0.1:5000
+//
+// PRODUCTION:
+// VITE_API_BASE_URL=https://roadguard-ai-54av.onrender.com
+//
+// The fallback allows the frontend to work locally even if
+// the .env file has not been created yet.
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://127.0.0.1:5000";
 
 
 // ============================================================
@@ -47,6 +65,25 @@ export async function analyzeImage(file) {
   );
 
 
+  // ----------------------------------------------------------
+  // Create request timeout
+  // ----------------------------------------------------------
+  //
+  // ML inference can take a while, especially when VGG19 and
+  // YOLOv8 need to be loaded for the first request.
+  //
+  // 5 minutes gives the backend enough time to complete a
+  // first-time model load on a CPU-only server.
+
+  const controller =
+    new AbortController();
+
+  const timeoutId =
+    setTimeout(() => {
+      controller.abort();
+    }, 5 * 60 * 1000);
+
+
   try {
 
     // --------------------------------------------------------
@@ -58,6 +95,7 @@ export async function analyzeImage(file) {
       {
         method: "POST",
         body: formData,
+        signal: controller.signal,
       }
     );
 
@@ -70,12 +108,13 @@ export async function analyzeImage(file) {
 
     try {
 
-      data = await response.json();
+      data =
+        await response.json();
 
     } catch (jsonError) {
 
       throw new Error(
-        "The backend returned an invalid response."
+        `Backend returned an invalid response. HTTP status: ${response.status}`
       );
     }
 
@@ -88,7 +127,7 @@ export async function analyzeImage(file) {
 
       throw new Error(
         data?.error ||
-        "Image detection failed."
+        `Image detection failed. HTTP status: ${response.status}`
       );
     }
 
@@ -132,7 +171,7 @@ export async function analyzeImage(file) {
 
       confidence:
         Number(
-          data.vgg19?.confidence || 0
+          data.vgg19?.confidence ?? 0
         ),
     };
 
@@ -145,12 +184,13 @@ export async function analyzeImage(file) {
       Array.isArray(
         data.yolov8?.detections
       )
+
         ? data.yolov8.detections.map(
             (detection) => ({
 
               confidence:
                 Number(
-                  detection.confidence || 0
+                  detection.confidence ?? 0
                 ),
 
               class_id:
@@ -162,26 +202,27 @@ export async function analyzeImage(file) {
 
                 x:
                   Number(
-                    detection.bboxPct?.x || 0
+                    detection.bboxPct?.x ?? 0
                   ),
 
                 y:
                   Number(
-                    detection.bboxPct?.y || 0
+                    detection.bboxPct?.y ?? 0
                   ),
 
                 w:
                   Number(
-                    detection.bboxPct?.w || 0
+                    detection.bboxPct?.w ?? 0
                   ),
 
                 h:
                   Number(
-                    detection.bboxPct?.h || 0
+                    detection.bboxPct?.h ?? 0
                   ),
               },
             })
           )
+
         : [];
 
 
@@ -219,7 +260,7 @@ export async function analyzeImage(file) {
 
     const processingTime =
       Number(
-        data.processing_time_sec || 0
+        data.processing_time_sec ?? 0
       );
 
 
@@ -231,13 +272,11 @@ export async function analyzeImage(file) {
 
       success: true,
 
-
       // Final verdict
       pothole_detected:
         Boolean(
           data.pothole_detected
         ),
-
 
       // ------------------------------------------------------
       // VGG19
@@ -251,7 +290,6 @@ export async function analyzeImage(file) {
         confidence:
           vgg19.confidence,
       },
-
 
       // ------------------------------------------------------
       // YOLOv8
@@ -269,7 +307,6 @@ export async function analyzeImage(file) {
           detections,
       },
 
-
       // ------------------------------------------------------
       // Processing time
       // ------------------------------------------------------
@@ -282,7 +319,21 @@ export async function analyzeImage(file) {
   } catch (error) {
 
     // --------------------------------------------------------
-    // Backend unavailable
+    // Request timeout
+    // --------------------------------------------------------
+
+    if (
+      error?.name === "AbortError"
+    ) {
+
+      throw new Error(
+        "Detection timed out after 5 minutes. The AI models may be taking too long to load or run on the backend."
+      );
+    }
+
+
+    // --------------------------------------------------------
+    // Network / CORS / backend connection error
     // --------------------------------------------------------
 
     if (
@@ -290,7 +341,7 @@ export async function analyzeImage(file) {
     ) {
 
       throw new Error(
-        "Unable to connect to the Flask backend. Make sure Flask is running on port 5000."
+        `Unable to connect to the Flask backend at ${API_BASE_URL}. Check that the backend is running and that CORS allows this frontend.`
       );
     }
 
@@ -300,8 +351,15 @@ export async function analyzeImage(file) {
     // --------------------------------------------------------
 
     throw new Error(
-      error.message ||
+      error?.message ||
       "Unable to analyze image."
+    );
+
+
+  } finally {
+
+    clearTimeout(
+      timeoutId
     );
   }
 }
@@ -315,17 +373,20 @@ export async function checkBackendHealth() {
 
   try {
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/health`
-    );
+    const response =
+      await fetch(
+        `${API_BASE_URL}/api/health`
+      );
 
 
     if (!response.ok) {
 
       return {
+
         status: "error",
+
         message:
-          "Backend is not responding correctly.",
+          `Backend returned HTTP ${response.status}.`,
       };
     }
 
@@ -344,7 +405,7 @@ export async function checkBackendHealth() {
       status: "error",
 
       message:
-        "Flask backend is not running.",
+        `Unable to connect to Flask backend at ${API_BASE_URL}.`,
     };
   }
 }
