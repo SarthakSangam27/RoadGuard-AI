@@ -11,6 +11,13 @@ from backend.database import get_db_connection
 load_dotenv()
 
 app = Flask(__name__)
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "success": True,
+        "message": "RoadGuard-AI Backend is running",
+        "status": "healthy"
+    }), 200
 app.config["MAX_CONTENT_LENGTH"] = 8 * 1024 * 1024
 
 allowed_origins = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
